@@ -105,8 +105,9 @@ function loadState() {
           }
         }
       }
-    } catch {
-      // 损坏的文件按空库处理：注册照常可用，旧数据不复活。
+    } catch (error) {
+      state = null;
+      throw new Error("账号库读取失败，已停止写入以保护现有账号", { cause: error });
     }
   }
   persist();
@@ -187,6 +188,18 @@ export function updateNickname(accountId, nickname) {
   record.nickname = check.value;
   persist();
   return { ok: true, record };
+}
+
+export function accountPersistenceEnabled() { return Boolean(persistence); }
+
+export function updateClassName(accountId, className) {
+  const check = validateClassName(className);
+  if (!check.ok) return { error: check.error };
+  const record = findAccountById(accountId);
+  if (!record || record.role !== "student") return { error: "学员账号不存在" };
+  record.className = check.value;
+  persist();
+  return { record };
 }
 
 /** 改密码（已登录）：验证旧密码 → 新盐重哈希。旧密码错误返回 {error}。 */

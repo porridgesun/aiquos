@@ -4,6 +4,8 @@ import { PRACTICAL_TASKS_PATH, handlePracticalTasks } from "./practical-tasks.js
 import { PRACTICAL_SCORE_PATH, handlePracticalScore } from "./practical-score.js";
 import { COMPREHENSIVE_QUESTION_PATH, handleComprehensiveQuestion } from "./comprehensive-quiz.js";
 import { ADMIN_BANK_PATH, handleAdminBank } from "./admin.js";
+import { accountPersistenceEnabled } from "./account-store.js";
+import { sharedDataPersistenceEnabled } from "./data-store.js";
 import {
   AUTH_LOGIN_PATH,
   AUTH_ME_PATH,
@@ -17,6 +19,7 @@ import {
   handleAuthRegister,
 } from "./auth.js";
 import {
+  DATA_CLASSES_PATH, handleDataClasses,
   DATA_ASSIGNMENTS_PATH,
   DATA_ASSIGNMENT_STATUS_PATH,
   DATA_ME_PATH,
@@ -31,6 +34,14 @@ import {
 
 export default {
   async fetch(request, env) {
+    const path = new URL(request.url).pathname;
+    if ((path.startsWith("/api/auth/") || path.startsWith("/api/data/"))
+      && (!accountPersistenceEnabled() || !sharedDataPersistenceEnabled())) {
+      // 部署不能把注册成功建立在临时内存上；数据库接通前拒绝账号和班级请求。
+      return new Response(JSON.stringify({ error: "服务端持久存储尚未配置，请完成数据库配置后再使用账号和班级功能" }), {
+        status: 503, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
+      });
+    }
     if (new URL(request.url).pathname === DEEPSEEK_CHAT_PATH) {
       return handleDeepSeekChat(request, env.DEEPSEEK_API_KEY);
     }
@@ -64,6 +75,7 @@ export default {
     if (new URL(request.url).pathname === AUTH_PASSWORD_PATH) {
       return handleAuthPassword(request);
     }
+    if (new URL(request.url).pathname === DATA_CLASSES_PATH) return handleDataClasses(request);
     if (new URL(request.url).pathname === DATA_RUNS_PATH) {
       return handleDataRuns(request);
     }

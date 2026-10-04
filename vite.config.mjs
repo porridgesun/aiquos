@@ -22,6 +22,7 @@ import {
   handleAuthRegister,
 } from "./worker/auth.js";
 import {
+  DATA_CLASSES_PATH, handleDataClasses,
   DATA_ASSIGNMENTS_PATH,
   DATA_ASSIGNMENT_STATUS_PATH,
   DATA_ME_PATH,
@@ -36,6 +37,8 @@ import {
 import { STAGE_LAYOUT_TUNING_PATH, handleStageLayoutTuning, CHARACTER_TUNING_PATH, handleCharacterTuning } from "./worker/stage-layout-tuning.js";
 import { setBankPersistence } from "./worker/bank-store.js";
 import { setAccountPersistence } from "./worker/account-store.js";
+import { filePersistence } from "./worker/file-persistence.js";
+import { bootstrapInitialCohort } from "./worker/initial-cohort.js";
 import { setSharedDataPersistence } from "./worker/data-store.js";
 
 // 三元素布局调参（?tune=1 面板「保存」）写回这份文件，成为新的默认值。
@@ -68,28 +71,10 @@ setBankPersistence({
 // 账号与共享数据的 fs 持久化（均 gitignored）。auth-accounts.json 同时保管
 // 令牌签名密钥——首次注册时随机生成，之后随文件存活。
 const authAccountsPath = fileURLToPath(new URL("./worker/auth-accounts.json", import.meta.url));
-setAccountPersistence({
-  load: () => {
-    try {
-      return readFileSync(authAccountsPath, "utf8");
-    } catch {
-      return null;
-    }
-  },
-  save: (raw) => writeFileSync(authAccountsPath, raw),
-});
-
 const sharedDataPath = fileURLToPath(new URL("./worker/aiquos-shared-data.json", import.meta.url));
-setSharedDataPersistence({
-  load: () => {
-    try {
-      return readFileSync(sharedDataPath, "utf8");
-    } catch {
-      return null;
-    }
-  },
-  save: (raw) => writeFileSync(sharedDataPath, raw),
-});
+bootstrapInitialCohort(authAccountsPath, sharedDataPath, fileURLToPath(new URL("./worker/initial-cohort.json", import.meta.url)));
+setAccountPersistence(filePersistence(authAccountsPath));
+setSharedDataPersistence(filePersistence(sharedDataPath));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
@@ -261,6 +246,7 @@ export default defineConfig(({ mode }) => {
           };
           server.middlewares.use(AUTH_PROFILE_PATH, jsonHandler(handleAuthProfile, AUTH_PROFILE_PATH, { authorization: true }));
           server.middlewares.use(AUTH_PASSWORD_PATH, jsonHandler(handleAuthPassword, AUTH_PASSWORD_PATH, { authorization: true }));
+          server.middlewares.use(DATA_CLASSES_PATH, jsonHandler(handleDataClasses, DATA_CLASSES_PATH));
           server.middlewares.use(DATA_RUNS_PATH, jsonHandler(handleDataRuns, DATA_RUNS_PATH));
           server.middlewares.use(DATA_ME_PATH, jsonHandler(handleDataMe, DATA_ME_PATH));
           server.middlewares.use(DATA_ASSIGNMENTS_PATH, jsonHandler(handleDataAssignments, DATA_ASSIGNMENTS_PATH));

@@ -35,6 +35,7 @@ const modules = [
   "worker/data.js",
   "worker/data-store.js",
   "src/auth-validation.js",
+  "src/class-ranking.js",
   "src/bank-editions.js",
   "src/comprehensive-adaptive.js",
   "src/cat-seeding.js",
